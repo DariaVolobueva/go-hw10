@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 	"sync"
 )
 
@@ -124,58 +125,64 @@ func (t *TaskResource) CreateOne(w http.ResponseWriter, r *http.Request) {
 }
 
 func (t *TaskResource) GetOne(w http.ResponseWriter, r *http.Request) {
-    idVal := r.PathValue("id")
-    id, err := strconv.Atoi(idVal)
+    parts := strings.Split(r.URL.Path, "/")
+    if len(parts) != 3 {
+        http.Error(w, "Invalid URL", http.StatusBadRequest)
+        return
+    }
+    idStr := parts[2]
+    id, err := strconv.Atoi(idStr)
     if err != nil {
-        fmt.Printf("Invalid id param: %v\n", err)
-        w.WriteHeader(http.StatusBadRequest)
+        http.Error(w, "Invalid ID", http.StatusBadRequest)
         return
     }
     task, ok := t.s.Get(id)
     if !ok {
-        w.WriteHeader(http.StatusNotFound)
+        http.NotFound(w, r)
         return
     }
-    err = json.NewEncoder(w).Encode(task)
-    if err != nil {
-        fmt.Printf("Failed to encode: %v\n", err)
-        w.WriteHeader(http.StatusInternalServerError)
-        return
-    }
+    w.Header().Set("Content-Type", "application/json")
+    json.NewEncoder(w).Encode(task)
 }
 
 func (t *TaskResource) UpdateOne(w http.ResponseWriter, r *http.Request) {
-    idVal := r.PathValue("id")
-    id, err := strconv.Atoi(idVal)
+    parts := strings.Split(r.URL.Path, "/")
+    if len(parts) != 3 {
+        http.Error(w, "Invalid URL", http.StatusBadRequest)
+        return
+    }
+    idStr := parts[2]
+    id, err := strconv.Atoi(idStr)
     if err != nil {
-        fmt.Printf("Invalid id param: %v\n", err)
-        w.WriteHeader(http.StatusBadRequest)
+        http.Error(w, "Invalid ID", http.StatusBadRequest)
         return
     }
     var task Task
-    err = json.NewDecoder(r.Body).Decode(&task)
-    if err != nil {
-        fmt.Printf("Failed to decode: %v\n", err)
-        w.WriteHeader(http.StatusBadRequest)
+    if err := json.NewDecoder(r.Body).Decode(&task); err != nil {
+        http.Error(w, err.Error(), http.StatusBadRequest)
         return
     }
     if !t.s.Update(id, task) {
-        w.WriteHeader(http.StatusNotFound)
+        http.NotFound(w, r)
         return
     }
     w.WriteHeader(http.StatusOK)
 }
 
 func (t *TaskResource) DeleteOne(w http.ResponseWriter, r *http.Request) {
-    idVal := r.PathValue("id")
-    id, err := strconv.Atoi(idVal)
+    parts := strings.Split(r.URL.Path, "/")
+    if len(parts) != 3 {
+        http.Error(w, "Invalid URL", http.StatusBadRequest)
+        return
+    }
+    idStr := parts[2]
+    id, err := strconv.Atoi(idStr)
     if err != nil {
-        fmt.Printf("Invalid id param: %v\n", err)
-        w.WriteHeader(http.StatusBadRequest)
+        http.Error(w, "Invalid ID", http.StatusBadRequest)
         return
     }
     if !t.s.Delete(id) {
-        w.WriteHeader(http.StatusNotFound)
+        http.NotFound(w, r)
         return
     }
     w.WriteHeader(http.StatusOK)
